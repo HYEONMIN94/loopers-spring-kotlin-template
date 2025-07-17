@@ -49,6 +49,7 @@ class ApiControllerAdvice {
 
             when (code) {
                 "Pattern" -> "요청 파라미터 '$field'의 값 '$rejectedValue'이(가) 잘못되었습니다. ($defaultMessage)"
+                "Min" -> "요청 파라미터 '$field'의 값 '$rejectedValue'이(가) 잘못되었습니다. ($defaultMessage)"
                 else -> "요청 파라미터 '$field'의 값 '$rejectedValue'이(가) 잘못되었습니다. ($defaultMessage)"
             }
         }
