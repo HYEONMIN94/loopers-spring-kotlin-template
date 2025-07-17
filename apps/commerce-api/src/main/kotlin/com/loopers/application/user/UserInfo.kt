@@ -19,7 +19,8 @@ data class UserInfo(
         val userName: String,
         val gender: User.Gender,
         val birthDate: String,
-        val email: String) {
+        val email: String,
+    ) {
 
         companion object {
             fun of(userName: String, gender: User.Gender, birthDate: String, email: String): SignUp {

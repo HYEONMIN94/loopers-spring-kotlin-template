@@ -18,7 +18,7 @@ class UserService(
      fun existsByUserName(userName: String) {
         userRepository.findByUserName(userName)
             ?.let {
-                throw CoreException(errorType = ErrorType.CONFLICT, customMessage = "[userId = ${userName}] 이미 존재하는 유저ID 입니다.")
+                throw CoreException(errorType = ErrorType.CONFLICT, customMessage = "[userId = $userName] 이미 존재하는 유저ID 입니다.")
             }
     }
 

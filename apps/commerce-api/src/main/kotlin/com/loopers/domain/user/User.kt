@@ -14,7 +14,7 @@ class User protected constructor(
     userName: UserName,
     gender: Gender,
     birthDate: BirthDate,
-    email: Email
+    email: Email,
 ) : BaseEntity() {
 
     @Column(name = "user_name", nullable = false, unique = true)
@@ -41,27 +41,34 @@ class User protected constructor(
     }
 
     enum class Gender {
-        MALE, FEMALE
+        MALE,
+        FEMALE,
     }
 
     @JvmInline
     value class UserName(
-        val value: String
+        val value: String,
     ) {
-        init { UserValidator.validateUserName(value) }
+        init {
+            UserValidator.validateUserName(value)
+        }
     }
 
     @JvmInline
     value class BirthDate(
-        val value: String
+        val value: String,
     ) {
-        init { UserValidator.validateBirthDate(value) }
+        init {
+            UserValidator.validateBirthDate(value)
+        }
     }
 
     @JvmInline
     value class Email(
-        val value: String
+        val value: String,
     ) {
-        init { UserValidator.validateEmail(value) }
+        init {
+            UserValidator.validateEmail(value)
+        }
     }
 }

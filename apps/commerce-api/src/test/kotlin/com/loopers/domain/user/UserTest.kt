@@ -18,7 +18,7 @@ class UserTest {
             "a한글이껴있네1A",
             "한글이야",
             "''",
-            "12345678910"
+            "12345678910",
         )
         fun `ID가 형식에 맞지 않으면 객체 생성에 실패한다`(userName: String) {
             // when
@@ -39,7 +39,7 @@ class UserTest {
             "xx@.zz",
             "xx@yy.",
         )
-        fun `이메일이 형식에 맞지 않으면 객체 생성에 실패한다`(email : String) {
+        fun `이메일이 형식에 맞지 않으면 객체 생성에 실패한다`(email: String) {
             // when
             val result = assertThrows<CoreException> {
                 User.create("userName", User.Gender.MALE, "1990-01-01", email)
@@ -58,7 +58,7 @@ class UserTest {
             "9999-999-99",
             "9999-99-909",
         )
-        fun `생년월일이 형식에 맞지 않으면 객체 생성에 실패한다`(birthDate : String) {
+        fun `생년월일이 형식에 맞지 않으면 객체 생성에 실패한다`(birthDate: String) {
             // when
             val result = assertThrows<CoreException> {
                 User.create("userName", User.Gender.MALE, birthDate, "email@ema.il")

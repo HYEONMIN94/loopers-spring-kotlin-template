@@ -6,7 +6,7 @@ import com.loopers.support.error.ErrorType
 import org.springframework.stereotype.Component
 import org.springframework.web.context.annotation.RequestScope
 
-//TODO: 현재 유저 인증 정보를 신뢰할 수 없어 User를 의존하는 상황 발생. 추후 리펙토링 필요
+// TODO: 현재 유저 인증 정보를 신뢰할 수 없어 User를 의존하는 상황 발생. 추후 리펙토링 필요
 @Component
 @RequestScope
 class AuthContext {

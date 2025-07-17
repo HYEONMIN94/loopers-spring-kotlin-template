@@ -28,7 +28,7 @@ class AuthenticationAspect(
         val userName = request.getHeader("X-USER-ID")
             ?: throw CoreException(ErrorType.BAD_REQUEST, "인증 토큰이 누락되었습니다.")
 
-        //TODO: 토큰 정보를 신뢰할 수 없어서 User에 의존하고 있지만 추후 리펙토링 필요
+        // TODO: 토큰 정보를 신뢰할 수 없어서 User에 의존하고 있지만 추후 리펙토링 필요
         val user = userRepository.findByUserName(userName)
             ?: throw CoreException(ErrorType.NOT_FOUND, "[userName = $userName] 존재하지 않는 유저입니다.")
 

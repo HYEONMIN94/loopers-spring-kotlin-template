@@ -20,8 +20,7 @@ class UserV1Controller(
 
     @Authenticated
     @GetMapping("/me")
-    override fun getMe(
-    ): ApiResponse<UserV1Dto.UserResponse> {
+    override fun getMe(): ApiResponse<UserV1Dto.UserResponse> {
         return userFacade.getMe(authContext.getUserName().value)
             .let { UserV1Dto.UserResponse.from(it) }
             .let { ApiResponse.success(it) }

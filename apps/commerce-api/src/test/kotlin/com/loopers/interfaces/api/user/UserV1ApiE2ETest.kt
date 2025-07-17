@@ -28,8 +28,8 @@ class UserV1ApiE2ETest @Autowired constructor(
     private val databaseCleanUp: DatabaseCleanUp,
 ) {
     companion object {
-        private val ENDPOINT_GET_ME = "/api/v1/users/me";
-        private val ENDPOINT_SIGN_UP = "/api/v1/users";
+        private val ENDPOINT_GET_ME = "/api/v1/users/me"
+        private val ENDPOINT_SIGN_UP = "/api/v1/users"
     }
 
     @AfterEach
@@ -48,7 +48,7 @@ class UserV1ApiE2ETest @Autowired constructor(
                     MALE,
                     "1990-01-01",
                     "xx@yy.zz",
-                )
+                ),
             )
 
             val headers = HttpHeaders().apply {
@@ -128,11 +128,14 @@ class UserV1ApiE2ETest @Autowired constructor(
         @Test
         fun `회원 가입 시에 성별이 없을 경우, 400 Bad Request 응답을 반환한다`() {
             // given
-            val requestBody = """{
-                "userId": "testUser",
-                "birthDate": "1990-01-01",
-                "email": "email@example.com"
-            }""".trimIndent()
+            val requestBody = """
+                {
+                    "userId": "testUser",
+                    "birthDate": "1990-01-01",
+                    "email": "email@example.com"
+                }
+            """.trimIndent()
+
             val headers = HttpHeaders().apply {
                 contentType = MediaType.APPLICATION_JSON
             }

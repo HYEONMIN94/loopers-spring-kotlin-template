@@ -57,7 +57,6 @@ class UserServiceIntegrationTest @Autowired constructor(
                 { assertThat(result?.birthDate).isEqualTo(exampleModel.birthDate) },
                 { assertThat(result?.email).isEqualTo(exampleModel.email) },
             )
-
         }
 
         @Test
