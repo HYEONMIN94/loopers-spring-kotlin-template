@@ -1,11 +1,9 @@
 package com.loopers.interfaces.api.point
 
-import com.loopers.domain.point.Point
-import com.loopers.domain.user.User
-import com.loopers.domain.user.User.Gender.MALE
 import com.loopers.infrastructure.point.PointJpaRepository
 import com.loopers.infrastructure.user.UserJpaRepository
 import com.loopers.interfaces.api.ApiResponse
+import com.loopers.interfaces.api.point.dsl.PointV1ApiE2EDsl
 import com.loopers.utils.DatabaseCleanUp
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
@@ -17,16 +15,14 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.client.TestRestTemplate
 import org.springframework.core.ParameterizedTypeReference
 import org.springframework.http.HttpEntity
-import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
-import org.springframework.http.MediaType
 import kotlin.test.assertNotNull
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class PointV1ApiE2ETest @Autowired constructor(
     private val testRestTemplate: TestRestTemplate,
-    private val userJpaRepository: UserJpaRepository,
+    private val userRepository: UserJpaRepository,
     private val pointRepository: PointJpaRepository,
     private val databaseCleanUp: DatabaseCleanUp,
 ) {
@@ -45,23 +41,11 @@ class PointV1ApiE2ETest @Autowired constructor(
         @Test
         fun `포인트 조회에 성공할 경우, 보유 포인트를 응답으로 반환한다`() {
             // given
-            val user = userJpaRepository.save(
-                User.create(
-                    "userName",
-                    MALE,
-                    "1990-01-01",
-                    "xx@yy.zz",
-                ),
-            )
+            val user = PointV1ApiE2EDsl.saveUser(userRepository)
 
-            val point = pointRepository.save(
-                Point.create(user.id, 1000),
-            )
+            val point = PointV1ApiE2EDsl.savePoint(pointRepository)
 
-            val headers = HttpHeaders().apply {
-                contentType = MediaType.APPLICATION_JSON
-                set("X-USER-ID", user.userName.value)
-            }
+            val headers = PointV1ApiE2EDsl.getHeaders(user.userName.value)
 
             // when
             val responseType = object : ParameterizedTypeReference<ApiResponse<PointV1Dto.PointResponse>>() {}
@@ -78,18 +62,9 @@ class PointV1ApiE2ETest @Autowired constructor(
         @Test
         fun `X-USER-ID 헤더가 없을 경우, 400 Bad Request 응답을 반환한다`() {
             // given
-            val user = userJpaRepository.save(
-                User.create(
-                    "userName",
-                    MALE,
-                    "1990-01-01",
-                    "xx@yy.zz",
-                ),
-            )
+            val user = PointV1ApiE2EDsl.saveUser(userRepository)
 
-            val headers = HttpHeaders().apply {
-                contentType = MediaType.APPLICATION_JSON
-            }
+            val headers = PointV1ApiE2EDsl.getHeaders()
 
             // when
             val responseType = object : ParameterizedTypeReference<ApiResponse<PointV1Dto.PointResponse>>() {}
@@ -108,25 +83,13 @@ class PointV1ApiE2ETest @Autowired constructor(
         @Test
         fun `존재하는 유저가 1000원을 충전할 경우, 충전된 보유 총량을 응답으로 반환한다`() {
             // given
-            val user = userJpaRepository.save(
-                User.create(
-                    "userName",
-                    MALE,
-                    "1990-01-01",
-                    "xx@yy.zz",
-                ),
-            )
+            val user = PointV1ApiE2EDsl.saveUser(userRepository)
 
-            val point = pointRepository.save(
-                Point.create(user.id, 1000),
-            )
+            val point = PointV1ApiE2EDsl.savePoint(pointRepository)
 
             val requestBody = PointV1Dto.ChargeRequest(1000)
 
-            val headers = HttpHeaders().apply {
-                contentType = MediaType.APPLICATION_JSON
-                set("X-USER-ID", user.userName.value)
-            }
+            val headers = PointV1ApiE2EDsl.getHeaders(user.userName.value)
 
             val requestEntity = HttpEntity(requestBody, headers)
 
@@ -149,10 +112,7 @@ class PointV1ApiE2ETest @Autowired constructor(
             // given
             val requestBody = PointV1Dto.ChargeRequest(1000)
 
-            val headers = HttpHeaders().apply {
-                contentType = MediaType.APPLICATION_JSON
-                set("X-USER-ID", "invalid")
-            }
+            val headers = PointV1ApiE2EDsl.getHeaders("invalid")
 
             val requestEntity = HttpEntity(requestBody, headers)
 
