@@ -1,6 +1,6 @@
 package com.loopers.domain.user
 
-import com.loopers.domain.user.User.Gender.MALE
+import com.loopers.domain.user.fixture.UserServiceIntegrationFixture
 import com.loopers.infrastructure.user.UserJpaRepository
 import com.loopers.utils.DatabaseCleanUp
 import org.assertj.core.api.Assertions.assertThat
@@ -29,14 +29,7 @@ class UserServiceIntegrationTest @Autowired constructor(
         @Test
         fun `해당 ID 의 회원이 존재할 경우, 회원 정보가 반환된다`() {
             // given
-            val exampleModel = userRepository.save(
-                User.create(
-                    "userId",
-                    MALE,
-                    "1990-01-01",
-                    "xx@yy.zz",
-                ),
-            )
+            val exampleModel = UserServiceIntegrationFixture.saveUser(userRepository)
 
             // when
             val result = userService.getMe(exampleModel.userName.value)

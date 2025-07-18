@@ -1,6 +1,6 @@
 package com.loopers.application.user
 
-import com.loopers.domain.user.User.Gender.MALE
+import com.loopers.application.user.fixture.UserFacadeIntegrationFixture
 import com.loopers.infrastructure.user.UserJpaRepository
 import com.loopers.support.error.CoreException
 import com.loopers.support.error.ErrorType
@@ -31,14 +31,7 @@ class UserFacadeIntegrationTest @Autowired constructor(
         @Test
         fun `회원 가입 시 user 정보를 저장한다`() {
             // when
-            userFacade.signUp(
-                UserInfo.SignUp(
-                    "userName",
-                    MALE,
-                    "1990-01-01",
-                    "xx@yy.zz",
-                ),
-            )
+            UserFacadeIntegrationFixture.signUp(userFacade)
 
             // then
             val user = userRepository.findAll()
@@ -48,8 +41,7 @@ class UserFacadeIntegrationTest @Autowired constructor(
         @Test
         fun `이미 가입된 ID 로 회원가입 시도 시 실패한다`() {
             // given
-            val userName = "userName"
-            val userInfo = UserInfo.SignUp(userName, MALE, "1990-01-01", "email@domain.com")
+            val userInfo = UserFacadeIntegrationFixture.givenSignUp()
             userFacade.signUp(userInfo)
 
             // when
