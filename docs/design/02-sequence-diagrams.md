@@ -183,11 +183,11 @@ sequenceDiagram
     participant CartService
 
     Client->>CartController: POST /cart
+    CartController->>CartFacade: 장바구니 담기 요청
 
     alt X-USER-ID 헤더 없음
         CartController-->>Client: 400 Bad Request
     else 유저 존재 확인
-        CartController->>CartFacade: 장바구니 담기 요청
         CartFacade->>UserService: 유저 ID로 유저 조회
         UserService-->>CartFacade: null
 
@@ -222,11 +222,11 @@ sequenceDiagram
     participant CartService
 
     Client->>CartController: DELETE /cart/{productId}
+    CartController->>CartFacade: 상품 제거 요청
 
     alt X-USER-ID 헤더 없음
         CartController-->>Client: 400 Bad Request
     else 유저 존재 확인
-        CartController->>CartFacade: 상품 제거 요청
         CartFacade->>UserService: 유저 ID로 유저 조회
         UserService-->>CartFacade: 유저 정보
 
@@ -269,11 +269,11 @@ sequenceDiagram
     participant LikeService
 
     Client->>LikeController: POST /likes/product
+    LikeController->>LikeFacade: 좋아요 등록 요청
 
     alt X-USER-ID 헤더 없음
         LikeController-->>Client: 400 Bad Request
     else 유저 ID 유효성 검사
-        LikeController->>LikeFacade: 좋아요 등록 요청
         LikeFacade->>UserService: 유저 ID로 유저 조회
         UserService-->>LikeFacade: 유저 정보
 
@@ -288,15 +288,14 @@ sequenceDiagram
                 LikeFacade-->>LikeController: 상품 없음
                 LikeController-->>Client: 404 Not Found
             else 상품 존재
-                LikeFacade->>LikeService: 유저가 이미 좋아요 했는지 확인
-                LikeService-->>LikeFacade: 좋아요 등록 여부
+                LikeFacade->>LikeService: 좋아요 등록 요청
 
                 alt 이미 좋아요 등록됨
+                    LikeService-->>LikeFacade: 중복됨
                     LikeFacade-->>LikeController: 무시 처리
-                    LikeController-->>Client: 200 OK (이미 좋아요 등록된 상태 유지)
-                else 좋아요 등록 수행
-                    LikeFacade->>LikeService: 좋아요 등록 처리
-                    LikeService-->>LikeFacade: 등록 성공
+                    LikeController-->>Client: 200 OK (이미 등록 상태 유지)
+                else 좋아요 등록
+                    LikeService-->>LikeFacade: 등록 완료
                     LikeFacade-->>LikeController: 등록 완료
                     LikeController-->>Client: 200 OK
                 end
@@ -316,11 +315,11 @@ sequenceDiagram
     participant LikeService
 
     Client->>LikeController: DELETE /likes/product/{productId}
+    LikeController->>LikeFacade: 좋아요 취소 요청
 
     alt X-USER-ID 헤더 없음
         LikeController-->>Client: 400 Bad Request
     else 유저 ID 유효성 검사
-        LikeController->>LikeFacade: 좋아요 취소 요청
         LikeFacade->>UserService: 유저 ID로 유저 조회
         UserService-->>LikeFacade: 유저 정보
 
@@ -335,14 +334,13 @@ sequenceDiagram
                 LikeFacade-->>LikeController: 상품 없음
                 LikeController-->>Client: 404 Not Found
             else 상품 존재
-                LikeFacade->>LikeService: 유저의 좋아요 여부 확인
-                LikeService-->>LikeFacade: 좋아요 등록 여부
+                LikeFacade->>LikeService: 좋아요 취소 요청
 
                 alt 좋아요 등록되지 않음
-                    LikeFacade-->>LikeController: 무시 처리
+                    LikeService-->>LikeFacade: 무시 처리
+                    LikeFacade-->>LikeController: 변경 없음
                     LikeController-->>Client: 200 OK (변경 없음)
-                else 좋아요 등록되어 있음
-                    LikeFacade->>LikeService: 좋아요 삭제 요청
+                else 좋아요 삭제 처리
                     LikeService-->>LikeFacade: 삭제 완료
                     LikeFacade-->>LikeController: 완료 응답
                     LikeController-->>Client: 200 OK (삭제 완료)
@@ -363,11 +361,11 @@ sequenceDiagram
     participant ProductService
 
     Client->>LikeController: GET /likes/product
+    LikeController->>LikeFacade: 좋아요 목록 조회 요청
 
     alt X-USER-ID 헤더 없음
         LikeController-->>Client: 400 Bad Request
     else 유저 존재 여부 확인
-        LikeController->>LikeFacade: 좋아요 목록 조회 요청
         LikeFacade->>UserService: 유저 ID로 유저 조회
         UserService-->>LikeFacade: 유저 정보
 
@@ -403,17 +401,16 @@ sequenceDiagram
     participant OrderService
 
     Client->>OrderController: POST /orders
+    OrderController->>OrderFacade: 주문 생성 요청
 
     alt X-USER-ID 헤더 없음
         OrderController-->>Client: 400 Bad Request
     else 유저 존재하지 않음
-        OrderController->>OrderFacade: 유저 ID 확인 요청
         OrderFacade->>UserService: 유저 ID로 유저 조회
         UserService-->>OrderFacade: 유저 없음
         OrderFacade-->>OrderController: 유저 없음
         OrderController-->>Client: 404 Not Found
     else 장바구니 선택 상품 없음
-        OrderController->>OrderFacade: 선택 상품 조회 요청
         OrderFacade->>CartService: 장바구니에서 선택된 상품 조회
         CartService-->>OrderFacade: 상품 없음
         OrderFacade-->>OrderController: 상품 없음
@@ -446,17 +443,16 @@ sequenceDiagram
     participant OrderService
 
     Client->>OrderController: GET /orders/{orderId}
+    OrderController->>OrderFacade: 주문 상세 조회 요청
 
     alt X-USER-ID 헤더 없음
         OrderController-->>Client: 400 Bad Request
     else 유저 없음
-        OrderController->>OrderFacade: 유저 ID 확인 요청
         OrderFacade->>UserService: 유저 ID로 유저 조회
         UserService-->>OrderFacade: 유저 없음
         OrderFacade-->>OrderController: 유저 없음
         OrderController-->>Client: 404 Not Found
     else 주문 없음
-        OrderController->>OrderFacade: 주문 정보 조회 요청
         OrderFacade->>OrderService: 주문 ID로 주문 조회
         OrderService-->>OrderFacade: 주문 없음
         OrderFacade-->>OrderController: 주문 없음
@@ -484,17 +480,16 @@ sequenceDiagram
     participant OrderService
 
     Client->>OrderController: GET /orders
+    OrderController->>OrderFacade: 주문 목록 조회 요청
 
     alt X-USER-ID 헤더 없음
         OrderController-->>Client: 400 Bad Request
     else 유저 없음
-        OrderController->>OrderFacade: 유저 존재 여부 확인 요청
         OrderFacade->>UserService: 유저 ID로 유저 조회
         UserService-->>OrderFacade: 유저 없음
         OrderFacade-->>OrderController: 유저 없음
         OrderController-->>Client: 404 Not Found
     else 성공
-        OrderController->>OrderFacade: 유저 주문 목록 조회 요청
         OrderFacade->>OrderService: 유저 ID로 주문 목록 조회
         OrderService-->>OrderFacade: 주문 목록
         OrderFacade-->>OrderController: 주문 목록
@@ -519,11 +514,11 @@ sequenceDiagram
     participant StockService
 
     Client->>PaymentController: POST /payments
+    PaymentController->>PaymentFacade: 결제 요청
 
     alt X-USER-ID 헤더 없음
         PaymentController-->>Client: 400 Bad Request
     else 유저 없음
-        PaymentController->>PaymentFacade: 유저 조회 요청
         PaymentFacade->>UserService: 유저 ID로 조회
         UserService-->>PaymentFacade: 유저 없음
         PaymentFacade-->>PaymentController: 유저 없음
@@ -576,11 +571,11 @@ sequenceDiagram
     participant PaymentService
 
     Client->>PaymentController: GET /payments/{orderId}
+    PaymentController->>PaymentFacade: 결제 결과 조회 요청
 
     alt X-USER-ID 헤더 없음
         PaymentController-->>Client: 400 Bad Request
     else 유저 없음
-        PaymentController->>PaymentFacade: 유저 확인 요청
         PaymentFacade->>UserService: 유저 ID 조회
         UserService-->>PaymentFacade: 유저 없음
         PaymentFacade-->>PaymentController: 유저 없음
