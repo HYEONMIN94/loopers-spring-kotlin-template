@@ -24,10 +24,6 @@ sequenceDiagram
         else 브랜드 목록 존재
             BrandController-->>Client: 200 OK (브랜드 목록)
         end
-        
-        opt name 
-            
-        end
     end
 ```
 
@@ -268,7 +264,7 @@ sequenceDiagram
     participant ProductService
     participant LikeService
 
-    Client->>LikeController: POST /likes/product
+    Client->>LikeController: POST /likes/products
     LikeController->>LikeFacade: 좋아요 등록 요청
 
     alt X-USER-ID 헤더 없음
@@ -314,7 +310,7 @@ sequenceDiagram
     participant ProductService
     participant LikeService
 
-    Client->>LikeController: DELETE /likes/product/{productId}
+    Client->>LikeController: DELETE /likes/products/{productId}
     LikeController->>LikeFacade: 좋아요 취소 요청
 
     alt X-USER-ID 헤더 없음
@@ -360,7 +356,7 @@ sequenceDiagram
     participant LikeService
     participant ProductService
 
-    Client->>LikeController: GET /likes/product
+    Client->>LikeController: GET /likes/products
     LikeController->>LikeFacade: 좋아요 목록 조회 요청
 
     alt X-USER-ID 헤더 없음
