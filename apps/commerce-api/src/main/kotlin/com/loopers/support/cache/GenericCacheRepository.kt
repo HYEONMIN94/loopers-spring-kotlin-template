@@ -12,16 +12,10 @@ class GenericCacheRepository(
     fun <T> cacheAside(
         kind: String,
         policy: CachePolicy,
-        cacheKeyDsl: CacheKeyDsl,
-        args: Map<String, Any?>,
+        key: String,
         typeRef: TypeReference<T>,
         loader: () -> T,
     ): T {
-        val versionKey = policy.versionKey(args)
-        val version: Long? = cacheStore.getMaster(versionKey)?.toLongOrNull()
-
-        val key = cacheKeyDsl.build(version)
-
         cacheStore.get(key)
             ?.let {
                 return objectMapper.readValue(it, typeRef)
@@ -29,15 +23,10 @@ class GenericCacheRepository(
 
         val loaded = loader()
 
-        val ttl = policy.ttlFor(kind)
+        val ttl = policy.getTtl(kind)
         val json = objectMapper.writeValueAsString(loaded)
         if (ttl != null) cacheStore.set(key, json, ttl) else cacheStore.set(key, json)
 
         return loaded
-    }
-
-    fun incrementVersion(policy: CachePolicy, args: Map<String, Any?> = emptyMap()): Long {
-        val versionKey = policy.versionKey(args)
-        return cacheStore.increment(versionKey)
     }
 }

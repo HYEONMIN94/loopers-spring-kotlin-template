@@ -67,7 +67,12 @@ class ProductRepositoryImpl(
                 likeCount.target.targetId.eq(product.id)
                     .and(likeCount.target.type.eq(PRODUCT)),
             )
-            .where(product.deletedAt.isNull)
+            .where(
+                product.deletedAt.isNull,
+                criteria.brandIds
+                    .takeIf { it.isNotEmpty() }
+                    ?.let { product.brandId.`in`(it) },
+            )
             .orderBy(*sortSpecifiers.toTypedArray())
             .offset(offset)
             .limit(limit)
@@ -79,7 +84,12 @@ class ProductRepositoryImpl(
         return queryFactory
             .select(product.count())
             .from(product)
-            .where(product.deletedAt.isNull)
+            .where(
+                product.deletedAt.isNull,
+                criteria.brandIds
+                    .takeIf { it.isNotEmpty() }
+                    ?.let { product.brandId.`in`(it) },
+            )
             .fetchOne() ?: 0L
     }
 
