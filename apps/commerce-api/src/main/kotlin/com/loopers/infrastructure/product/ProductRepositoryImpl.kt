@@ -86,4 +86,8 @@ class ProductRepositoryImpl(
     override fun save(product: Product): Product {
         return productJpaRepository.save(product)
     }
+
+    override fun delete(id: Long) {
+        productJpaRepository.deleteById(id)
+    }
 }

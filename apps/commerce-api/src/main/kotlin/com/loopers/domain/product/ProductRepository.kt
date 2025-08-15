@@ -13,4 +13,6 @@ interface ProductRepository {
     fun count(criteria: ProductCriteria.FindAll): Long
 
     fun save(product: Product): Product
+
+    fun delete(id: Long)
 }

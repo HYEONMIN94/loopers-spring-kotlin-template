@@ -13,6 +13,7 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Component
+import org.springframework.transaction.annotation.Transactional
 
 @Component
 class ProductService(
@@ -26,10 +27,6 @@ class ProductService(
 
     fun findAll(ids: List<Long>): List<Product> {
         return productRepository.findAll(ids)
-    }
-
-    fun register(command: ProductCommand.RegisterProduct): Product {
-        return productRepository.save(command.toEntity())
     }
 
     fun findAllCached(criteria: ProductCriteria.FindAll): Page<Product> {
@@ -77,5 +74,29 @@ class ProductService(
 
         val pageable = PageRequest.of(criteria.page, criteria.size)
         return PageImpl(list, pageable, total)
+    }
+
+    @Transactional
+    fun register(command: ProductCommand.RegisterProduct): Product {
+        val product = productRepository.save(command.toEntity())
+        cacheRepository.incrementVersion(ProductCachePolicy, mapOf("brandId" to product.brandId))
+        cacheRepository.incrementVersion(ProductCachePolicy, emptyMap())
+        return product
+    }
+
+    @Transactional
+    fun update(command: ProductCommand.UpdateProduct) {
+        val product = get(command.productId)
+        product.update(command.name, command.description, command.price)
+        cacheRepository.incrementVersion(ProductCachePolicy, mapOf("brandId" to product.brandId))
+        cacheRepository.incrementVersion(ProductCachePolicy, emptyMap())
+    }
+
+    @Transactional
+    fun delete(productId: Long) {
+        val product = get(productId)
+        product.delete()
+        cacheRepository.incrementVersion(ProductCachePolicy, mapOf("brandId" to product.brandId))ㄴ
+        cacheRepository.incrementVersion(ProductCachePolicy)
     }
 }

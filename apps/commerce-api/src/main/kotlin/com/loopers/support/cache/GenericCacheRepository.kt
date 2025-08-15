@@ -18,7 +18,7 @@ class GenericCacheRepository(
         loader: () -> T,
     ): T {
         val versionKey = policy.versionKey(args)
-        val version: Long? = cacheStore.get(versionKey)?.toLongOrNull()
+        val version: Long? = cacheStore.getMaster(versionKey)?.toLongOrNull()
 
         val key = cacheKeyDsl.build(version)
 
@@ -34,5 +34,10 @@ class GenericCacheRepository(
         if (ttl != null) cacheStore.set(key, json, ttl) else cacheStore.set(key, json)
 
         return loaded
+    }
+
+    fun incrementVersion(policy: CachePolicy, args: Map<String, Any?> = emptyMap()): Long {
+        val versionKey = policy.versionKey(args)
+        return cacheStore.increment(versionKey)
     }
 }

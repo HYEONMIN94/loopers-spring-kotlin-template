@@ -17,6 +17,9 @@ class RedisCacheStore(
     override fun get(key: String): String? =
         runCatching { redisTemplate.opsForValue().get(key) }.getOrNull()
 
+    override fun getMaster(key: String): String? =
+        runCatching { masterRedisTemplate.opsForValue().get(key) }.getOrNull()
+
     override fun set(key: String, value: String) {
         runCatching { masterRedisTemplate.opsForValue().set(key, value) }
     }
