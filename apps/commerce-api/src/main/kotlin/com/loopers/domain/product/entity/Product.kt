@@ -41,10 +41,6 @@ class Product protected constructor(
         this.updatedAt = ZonedDateTime.now()
     }
 
-    fun delete() {
-        this.deletedAt = ZonedDateTime.now()
-    }
-
     companion object {
         fun create(brandId: Long, name: String, description: String, price: BigDecimal): Product {
             return Product(brandId, ProductName(name), ProductDescription(description), ProductPrice(price))
