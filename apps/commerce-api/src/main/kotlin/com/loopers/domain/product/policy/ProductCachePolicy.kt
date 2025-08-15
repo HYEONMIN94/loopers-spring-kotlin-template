@@ -5,10 +5,11 @@ import java.time.Duration
 
 object ProductCachePolicy : CachePolicy {
     override val namespace: String = "product:list"
-    private val ttl: Duration = Duration.ofMinutes(3)
 
-    override fun ttlFor(kind: String): Duration {
-        return ttl
+    override fun ttlFor(kind: String): Duration = when (kind) {
+        "list" -> Duration.ofMinutes(3)
+        "count" -> Duration.ofMinutes(5)
+        else -> Duration.ofMinutes(3)
     }
 
     override fun versionKey(args: Map<String, Any?>): String {

@@ -9,8 +9,6 @@ import com.loopers.domain.product.entity.Product
 import com.loopers.domain.product.entity.QProduct
 import com.querydsl.core.types.OrderSpecifier
 import com.querydsl.jpa.impl.JPAQueryFactory
-import org.springframework.data.domain.Page
-import org.springframework.data.domain.PageImpl
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Component
 
@@ -29,7 +27,7 @@ class ProductRepositoryImpl(
 
     override fun findAll(
         criteria: ProductCriteria.FindAll,
-    ): Page<Product> {
+    ): List<Product> {
         val product = QProduct.product
         val likeCount = QLikeCount.likeCount
 
@@ -61,7 +59,7 @@ class ProductRepositoryImpl(
                 listOf(likeCount.count.value.asc(), likeCount.target.targetId.asc())
         }
 
-        val results = queryFactory
+        return queryFactory
             .select(product)
             .from(product)
             .innerJoin(likeCount)
@@ -74,14 +72,15 @@ class ProductRepositoryImpl(
             .offset(offset)
             .limit(limit)
             .fetch()
+    }
 
-        val totalCount = queryFactory
+    override fun count(criteria: ProductCriteria.FindAll): Long {
+        val product = QProduct.product
+        return queryFactory
             .select(product.count())
             .from(product)
             .where(product.deletedAt.isNull)
             .fetchOne() ?: 0L
-
-        return PageImpl(results, pageable, totalCount)
     }
 
     override fun save(product: Product): Product {

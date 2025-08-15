@@ -10,6 +10,7 @@ data class PageCacheDto<T>(
     val size: Int,
     val totalElements: Long,
 ) {
+    fun withTotal(total: Long) = copy(totalElements = total)
     fun toPage(): Page<T> =
         PageImpl(content, PageRequest.of(number, size), totalElements)
 

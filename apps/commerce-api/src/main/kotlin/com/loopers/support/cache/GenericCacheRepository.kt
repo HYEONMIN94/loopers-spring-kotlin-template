@@ -12,7 +12,7 @@ class GenericCacheRepository(
     fun <T> cacheAside(
         kind: String,
         policy: CachePolicy,
-        keyBuilder: CacheKeyBuilder,
+        cacheKeyDsl: CacheKeyDsl,
         args: Map<String, Any?>,
         typeRef: TypeReference<T>,
         loader: () -> T,
@@ -20,7 +20,7 @@ class GenericCacheRepository(
         val versionKey = policy.versionKey(args)
         val version: Long? = cacheStore.get(versionKey)?.toLongOrNull()
 
-        val key = keyBuilder.buildKey(policy.namespace, version, args)
+        val key = cacheKeyDsl.build(version)
 
         cacheStore.get(key)
             ?.let {
