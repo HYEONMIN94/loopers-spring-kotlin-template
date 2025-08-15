@@ -96,7 +96,7 @@ class ProductService(
     fun delete(productId: Long) {
         val product = get(productId)
         product.delete()
-        cacheRepository.incrementVersion(ProductCachePolicy, mapOf("brandId" to product.brandId))ㄴ
+        cacheRepository.incrementVersion(ProductCachePolicy, mapOf("brandId" to product.brandId))
         cacheRepository.incrementVersion(ProductCachePolicy)
     }
 }
