@@ -20,6 +20,9 @@ export const options = {
   },
 };
 
+const SORT_OPTIONS = ['LATEST', 'CREATED_AT_ASC', 'CREATED_AT_DESC', 'PRICE_ASC', 'PRICE_DESC', 'LIKES_ASC', 'LIKES_DESC'];
+const MAX_PAGE = 1000;
+const MAX_BRAND_ID = 500;
 const BASE_URL = 'http://host.docker.internal:8080';
 const BRAND_ID = '100';
 const LIMIT = '20';
@@ -62,11 +65,16 @@ export function brandPrice() {
   get(`/api/v1/products?brandId=${BRAND_ID}&sort=PRICE_DESC&size=${LIMIT}&page=${PAGE}`, { scenario: 'brand_price' });
   sleep(0.1);
 }
-
-export default function () {
-  return latest();
+export function random() {
+  const randomSort = SORT_OPTIONS[Math.floor(Math.random() * SORT_OPTIONS.length)];
+  const randomPage = Math.floor(Math.random() * MAX_PAGE);
+  const randomBrandId = Math.random() < 0.3
+      ? `&brandId=${Math.floor(Math.random() * MAX_BRAND_ID) + 1}`
+      : '';
+  get(`/api/v1/products?sort=${randomSort}&size=${LIMIT}&page=${randomPage}${randomBrandId}`, { scenario: 'random' });
+  sleep(0.1);
 }
 
-export function handleSummary(data) {
-  return { '/out/k6-summary.json': JSON.stringify(data, null, 2) };
+export default function () {
+  return random();
 }
