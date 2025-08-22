@@ -7,7 +7,7 @@ import com.loopers.domain.order.entity.Order
 import com.loopers.domain.order.entity.OrderItem
 import com.loopers.domain.payment.PaymentService
 import com.loopers.domain.payment.entity.Payment
-import com.loopers.domain.payment.strategy.PaymentStrategyRegistry
+import com.loopers.domain.point.PointService
 import com.loopers.domain.product.ProductStockService
 import com.loopers.domain.product.dto.command.ProductStockCommand
 import com.loopers.domain.product.dto.result.ProductStockResult
@@ -24,31 +24,34 @@ class PaymentProcessor(
     private val orderService: OrderService,
     private val orderItemService: OrderItemService,
     private val productStockService: ProductStockService,
+    private val pointService: PointService,
     private val paymentStateService: PaymentStateService,
     private val orderStateService: OrderStateService,
-    private val paymentStrategyRegistry: PaymentStrategyRegistry,
 ) {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     fun process(id: Long) {
-        paymentStateService.paymentProcessing(id)
-
         val payment = paymentService.get(id)
         val order = orderService.get(payment.orderId)
+
+        val orderItems = orderItemService.findAll(order.id)
+
         try {
-            processPayment(order, payment)
+            processPayment(order, payment, orderItems)
         } catch (e: Exception) {
             processFailure(order.id, payment.id, resolveFailureReason(e))
             throw e
         }
     }
 
-    private fun processPayment(order: Order, payment: Payment) {
-        val orderItems = orderItemService.findAll(order.id)
+    private fun processPayment(order: Order, payment: Payment, orderItems: List<OrderItem>) {
         val decreaseStocks = getDecreaseStocks(orderItems)
         productStockService.decreaseStocks(decreaseStocks.toCommand())
 
-        val paymentStrategy = paymentStrategyRegistry.of(payment.paymentMethod)
-        paymentStrategy.process(order, payment)
+        val point = pointService.get(order.userId)
+        point.use(payment.paymentPrice.value)
+
+        payment.success()
+        order.success()
     }
 
     private fun processFailure(orderId: Long, paymentId: Long, reason: String) {
