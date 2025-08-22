@@ -19,11 +19,14 @@ class Payment protected constructor(
     paymentMethod: Method,
     paymentPrice: PaymentPrice,
     status: Status,
+    cardType: String?,
+    cardNumber: String?,
 ) : BaseEntity() {
     @Column(name = "order_id", nullable = false)
     var orderId: Long = orderId
         protected set
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "payment_method", nullable = false)
     var paymentMethod: Method = paymentMethod
         protected set
@@ -37,41 +40,85 @@ class Payment protected constructor(
     var status: Status = status
         protected set
 
+    @Column(name = "card_type")
+    var cardType: String? = cardType
+        protected set
+
+    @Column(name = "card_number")
+    var cardNumber: String? = cardNumber
+        protected set
+
+    @Column(name = "transaction_key")
+    var transactionKey: String? = null
+        protected set
+
     @Column(name = "reason")
     var reason: String? = null
+        protected set
 
     @Column(name = "failed_at")
     var failedAt: ZonedDateTime? = null
         protected set
 
-    fun success() {
+    fun processing() {
         if (status != Status.REQUESTED) {
-            throw CoreException(ErrorType.CONFLICT, "결제 요청 상태일 때만 주문을 성공 처리할 수 있습니다.")
+            throw CoreException(ErrorType.CONFLICT, "결제 요청 상태일 때만 결제를 진행할 수 있습니다.")
+        }
+        status = Status.PROCESSING
+    }
+
+    fun success() {
+        if (status != Status.PROCESSING) {
+            throw CoreException(ErrorType.CONFLICT, "결제 진행 상태일 때만 결제를 성공 처리할 수 있습니다.")
         }
         status = Status.SUCCESS
     }
 
-    fun failure(reason: String) {
-        if (status != Status.REQUESTED) {
-            throw CoreException(ErrorType.CONFLICT, "결제 요청 상태일 때만 주문을 실패 처리할 수 있습니다.")
+    fun failure(reason: String?) {
+        if (status != Status.PROCESSING) {
+            throw CoreException(ErrorType.CONFLICT, "결제 진행 상태일 때만 결제를 실패 처리할 수 있습니다.")
         }
         status = Status.FAILED
         this.reason = reason
         failedAt = ZonedDateTime.now()
     }
 
+    fun updateTransactionKey(transactionKey: String) {
+        this.transactionKey = transactionKey
+    }
+
     enum class Method {
         POINT,
+        CREDIT_CARD,
     }
     enum class Status {
         REQUESTED,
+        PROCESSING,
         SUCCESS,
         FAILED,
     }
 
     companion object {
         fun create(orderId: Long, paymentMethod: Method, paymentPrice: BigDecimal, status: Status): Payment {
-            return Payment(orderId, paymentMethod, PaymentPrice(paymentPrice), status)
+            return Payment(
+                orderId,
+                paymentMethod,
+                PaymentPrice(paymentPrice),
+                status,
+                cardType = null,
+                cardNumber = null,
+            )
+        }
+
+        fun create(
+            orderId: Long,
+            paymentMethod: Method,
+            paymentPrice: BigDecimal,
+            status: Status,
+            cardType: String,
+            cardNumber: String,
+        ): Payment {
+            return Payment(orderId, paymentMethod, PaymentPrice(paymentPrice), status, cardType, cardNumber)
         }
     }
 }
