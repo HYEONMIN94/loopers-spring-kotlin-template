@@ -8,4 +8,6 @@ interface PaymentRepository {
     fun find(transactionKey: String): Payment?
 
     fun save(payment: Payment): Payment
+
+    fun findByStatus(status: Payment.Status): List<Payment>
 }
