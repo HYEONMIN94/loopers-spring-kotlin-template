@@ -3,6 +3,7 @@ package com.loopers.domain.payment
 import com.loopers.domain.payment.entity.Payment
 import com.loopers.domain.payment.entity.Payment.Method.POINT
 import com.loopers.domain.payment.entity.Payment.Status.FAILED
+import com.loopers.domain.payment.entity.Payment.Status.PROCESSING
 import com.loopers.domain.payment.entity.Payment.Status.REQUESTED
 import com.loopers.domain.payment.entity.Payment.Status.SUCCESS
 import com.loopers.support.error.CoreException
@@ -27,7 +28,7 @@ class PaymentTest {
     @Test
     fun `결제를 성공 상태로 변경한다`() {
         // given
-        val payment = Payment.create(1L, POINT, BigDecimal("1"), REQUESTED)
+        val payment = Payment.create(1L, POINT, BigDecimal("1"), PROCESSING)
 
         // when
         payment.success()
@@ -39,7 +40,7 @@ class PaymentTest {
     @Test
     fun `결제를 실패 상태로 변경한다`() {
         // given
-        val payment = Payment.create(1L, POINT, BigDecimal("1"), REQUESTED)
+        val payment = Payment.create(1L, POINT, BigDecimal("1"), PROCESSING)
 
         // when
         payment.failure("failReason")
@@ -57,9 +58,9 @@ class PaymentTest {
     }
 
     @Test
-    fun `결제 요청 상태일 때 주문을 성공 처리할 수 있다`() {
+    fun `결제 진행 상태일 때 주문을 성공 처리할 수 있다`() {
         // given
-        val payment = Payment.create(1L, POINT, BigDecimal("1"), REQUESTED)
+        val payment = Payment.create(1L, POINT, BigDecimal("1"), PROCESSING)
 
         // when
         payment.success()
@@ -69,9 +70,9 @@ class PaymentTest {
     }
 
     @Test
-    fun `결제 요청 상태일 때 주문을 실패 처리할 수 있다`() {
+    fun `결제 진행 상태일 때 주문을 실패 처리할 수 있다`() {
         // given
-        val payment = Payment.create(1L, POINT, BigDecimal("1"), REQUESTED)
+        val payment = Payment.create(1L, POINT, BigDecimal("1"), PROCESSING)
 
         // when
         payment.failure("failReason")
