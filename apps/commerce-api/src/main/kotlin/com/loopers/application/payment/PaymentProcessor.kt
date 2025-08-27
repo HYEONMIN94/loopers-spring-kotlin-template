@@ -1,17 +1,13 @@
 package com.loopers.application.payment
 
-import com.loopers.application.order.OrderStateService
 import com.loopers.domain.order.OrderItemService
 import com.loopers.domain.order.OrderService
-import com.loopers.domain.order.entity.Order
 import com.loopers.domain.order.entity.OrderItem
+import com.loopers.domain.order.event.OrderEvent
 import com.loopers.domain.payment.PaymentService
-import com.loopers.domain.payment.entity.Payment
-import com.loopers.domain.payment.strategy.PaymentStrategyRegistry
-import com.loopers.domain.payment.strategy.PaymentStrategyResult
-import com.loopers.domain.product.ProductStockService
-import com.loopers.domain.product.dto.command.ProductStockCommand
-import com.loopers.domain.product.dto.result.ProductStockResult
+import com.loopers.domain.payment.event.PaymentEvent
+import com.loopers.domain.product.event.ProductStockEvent
+import com.loopers.infrastructure.event.DomainEventPublisher
 import com.loopers.support.error.CoreException
 import com.loopers.support.error.ErrorType
 import org.springframework.orm.ObjectOptimisticLockingFailureException
@@ -24,59 +20,34 @@ class PaymentProcessor(
     private val paymentService: PaymentService,
     private val orderService: OrderService,
     private val orderItemService: OrderItemService,
-    private val productStockService: ProductStockService,
-    private val paymentStateService: PaymentStateService,
-    private val orderStateService: OrderStateService,
-    private val paymentStrategyRegistry: PaymentStrategyRegistry,
+    private val eventPublisher: DomainEventPublisher,
 ) {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     fun process(id: Long) {
-        paymentStateService.paymentProcessing(id)
+        eventPublisher.publish(PaymentEvent.PaymentProcessedEvent(id))
 
         val payment = paymentService.get(id)
         val order = orderService.get(payment.orderId)
         try {
-            processPayment(payment, order)
-            processSuccess(payment, order)
+            val orderItems = orderItemService.findAll(order.id)
+            eventPublisher.publish(getDecreaseStocksEvents(orderItems))
+            eventPublisher.publish(PaymentEvent.PaymentRequestEvent(order.userId, payment.id))
+            eventPublisher.publish(PaymentEvent.PaymentSucceededEvent(payment.id))
+            eventPublisher.publish(OrderEvent.OrderSucceededEvent(order.id))
         } catch (e: Exception) {
-            processFailure(order.id, payment.id, resolveFailureReason(e))
+            val reason = resolveFailureReason(e)
+            eventPublisher.publish(PaymentEvent.PaymentFailedEvent(payment.id, reason))
+            eventPublisher.publish(OrderEvent.OrderFailedEvent(order.id, reason))
             throw e
         }
     }
 
-    private fun processPayment(payment: Payment, order: Order) {
-        val orderItems = orderItemService.findAll(order.id)
-        val decreaseStocks = getDecreaseStocks(orderItems)
-        productStockService.decreaseStocks(decreaseStocks.toCommand())
-
-        val paymentStrategy = paymentStrategyRegistry.of(payment.paymentMethod)
-        val paymentRequestResult = paymentStrategy.process(order, payment)
-
-        when (paymentRequestResult.status) {
-            PaymentStrategyResult.Status.SUCCESS -> {}
-            PaymentStrategyResult.Status.FAILURE -> {
-                throw CoreException(ErrorType.PAYMENT_REQUEST_FAILURE, paymentRequestResult.reason)
-            }
-        }
-    }
-
-    private fun processSuccess(payment: Payment, order: Order) {
-        payment.success()
-        order.success()
-    }
-
-    private fun processFailure(orderId: Long, paymentId: Long, reason: String) {
-        paymentStateService.paymentFailure(paymentId, reason)
-        orderStateService.orderFailure(orderId, reason)
-    }
-
-    private fun getDecreaseStocks(orderItems: List<OrderItem>): ProductStockResult.DecreaseStocks {
-        val command = ProductStockCommand.GetDecreaseStock(
+    private fun getDecreaseStocksEvents(orderItems: List<OrderItem>): ProductStockEvent.DecreaseStocksEvent {
+        return ProductStockEvent.DecreaseStocksEvent(
             orderItems.map {
-                ProductStockCommand.GetDecreaseStock.DecreaseStock(it.productOptionId, it.quantity.value)
+                ProductStockEvent.DecreaseStockEvent(it.productOptionId, it.quantity.value)
             },
         )
-        return productStockService.getDecreaseStock(command)
     }
 
     private fun resolveFailureReason(e: Throwable): String {

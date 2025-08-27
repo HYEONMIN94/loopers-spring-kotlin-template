@@ -1,6 +1,5 @@
 package com.loopers.domain.payment.strategy
 
-import com.loopers.domain.order.entity.Order
 import com.loopers.domain.payment.entity.Payment
 import com.loopers.domain.payment.type.CardType
 import com.loopers.infrastructure.pg.PgDto
@@ -15,16 +14,16 @@ class CreditCardPaymentStrategy(
     override fun supports() = Payment.Method.CREDIT_CARD
 
     @Transactional
-    override fun process(order: Order, payment: Payment): PaymentStrategyResult {
+    override fun process(userId: Long, payment: Payment): PaymentStrategyResult {
         val req = PgDto.PaymentRequest(
-            orderId = "LOOPERS-" + order.id,
+            orderId = "LOOPERS-" + payment.id,
             cardType = CardType.of(payment.cardType),
             cardNo = payment.cardNumber,
             amount = payment.paymentPrice.value.toLong(),
             callbackUrl = "http://localhost:8080/api/v1/payments/webhook",
         )
 
-        return when (val pgResponse = pgGateway.payment(order.userId, req)) {
+        return when (val pgResponse = pgGateway.payment(userId, req)) {
             is PgGateway.Result.Ok -> {
                 payment.updateTransactionKey(pgResponse.transactionKey)
                 PaymentStrategyResult.success()

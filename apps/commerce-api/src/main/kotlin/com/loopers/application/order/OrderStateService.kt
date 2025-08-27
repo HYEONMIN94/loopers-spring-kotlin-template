@@ -9,6 +9,12 @@ import org.springframework.transaction.annotation.Transactional
 class OrderStateService(
     private val orderService: OrderService,
 ) {
+    @Transactional
+    fun orderSuccess(orderId: Long) {
+        val order = orderService.get(orderId)
+        order.success()
+    }
+
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     fun orderFailure(orderId: Long, reason: String) {
         val order = orderService.get(orderId)

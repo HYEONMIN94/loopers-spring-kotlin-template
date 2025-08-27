@@ -1,6 +1,5 @@
 package com.loopers.domain.payment.strategy
 
-import com.loopers.domain.order.entity.Order
 import com.loopers.domain.payment.entity.Payment
 import com.loopers.domain.point.PointService
 import org.springframework.stereotype.Component
@@ -14,8 +13,8 @@ class PointPaymentStrategy(
     override fun supports() = Payment.Method.POINT
 
     @Transactional
-    override fun process(order: Order, payment: Payment): PaymentStrategyResult {
-        val point = pointService.get(order.userId)
+    override fun process(userId: Long, payment: Payment): PaymentStrategyResult {
+        val point = pointService.get(userId)
         point.use(payment.paymentPrice.value)
 
         return PaymentStrategyResult.success()
