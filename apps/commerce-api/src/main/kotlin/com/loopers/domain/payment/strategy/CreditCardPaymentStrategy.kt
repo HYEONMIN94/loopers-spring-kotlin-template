@@ -15,7 +15,7 @@ class CreditCardPaymentStrategy(
     override fun supports() = Payment.Method.CREDIT_CARD
 
     @Transactional
-    override fun process(order: Order, payment: Payment) {
+    override fun process(order: Order, payment: Payment): PaymentStrategyResult {
         val req = PgDto.PaymentRequest(
             orderId = "LOOPERS-" + order.id,
             cardType = CardType.of(payment.cardType),
@@ -24,20 +24,13 @@ class CreditCardPaymentStrategy(
             callbackUrl = "http://localhost:8080/api/v1/payments/webhook",
         )
 
-        when (val result = pgGateway.payment(order.userId, req)) {
+        return when (val pgResponse = pgGateway.payment(order.userId, req)) {
             is PgGateway.Result.Ok -> {
-                payment.updateTransactionKey(result.transactionKey)
+                payment.updateTransactionKey(pgResponse.transactionKey)
+                PaymentStrategyResult.success()
             }
-
-            is PgGateway.Result.BadRequest -> {
-                payment.failure(result.message)
-                order.failure(result.message)
-            }
-
-            is PgGateway.Result.Retryable -> {
-                payment.failure(result.message)
-                order.failure(result.message)
-            }
+            is PgGateway.Result.BadRequest -> PaymentStrategyResult.failure(pgResponse.message)
+            is PgGateway.Result.Retryable -> PaymentStrategyResult.failure(pgResponse.message)
         }
     }
 }

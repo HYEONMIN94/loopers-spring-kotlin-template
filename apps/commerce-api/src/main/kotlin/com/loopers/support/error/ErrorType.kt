@@ -14,4 +14,7 @@ enum class ErrorType(val status: HttpStatus, val code: String, val message: Stri
 
     /** 상품 제고 */
     PRODUCT_STOCK_NOT_ENOUGH(HttpStatus.CONFLICT, HttpStatus.CONFLICT.reasonPhrase, "재고가 부족합니다."),
+
+    /** PG 결제 요청 */
+    PAYMENT_REQUEST_FAILURE(HttpStatus.CONFLICT, HttpStatus.CONFLICT.reasonPhrase, "PG사 결제 요청에 실패하였습니다."),
 }

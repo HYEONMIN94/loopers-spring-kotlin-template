@@ -14,11 +14,10 @@ class PointPaymentStrategy(
     override fun supports() = Payment.Method.POINT
 
     @Transactional
-    override fun process(order: Order, payment: Payment) {
+    override fun process(order: Order, payment: Payment): PaymentStrategyResult {
         val point = pointService.get(order.userId)
         point.use(payment.paymentPrice.value)
 
-        payment.success()
-        order.success()
+        return PaymentStrategyResult.success()
     }
 }
