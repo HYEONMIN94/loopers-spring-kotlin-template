@@ -7,7 +7,6 @@ import com.loopers.domain.payment.strategy.PaymentStrategyRegistry
 import com.loopers.domain.payment.strategy.PaymentStrategyResult
 import com.loopers.support.error.CoreException
 import com.loopers.support.error.ErrorType
-import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
 import org.springframework.transaction.event.TransactionPhase
 import org.springframework.transaction.event.TransactionalEventListener
@@ -18,7 +17,7 @@ class PaymentEventListener(
     private val paymentStateService: PaymentStateService,
     private val paymentStrategyRegistry: PaymentStrategyRegistry,
 ) {
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     fun handle(event: PaymentEvent.PaymentRequestEvent) {
         val payment = paymentService.get(event.paymentId)
         val paymentStrategy = paymentStrategyRegistry.of(payment.paymentMethod)
@@ -31,12 +30,12 @@ class PaymentEventListener(
         }
     }
 
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     fun handle(event: PaymentEvent.PaymentProcessedEvent) {
         paymentStateService.paymentProcessing(event.paymentId)
     }
 
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     fun handle(event: PaymentEvent.PaymentSucceededEvent) {
         paymentStateService.paymentSuccess(event.paymentId)
     }

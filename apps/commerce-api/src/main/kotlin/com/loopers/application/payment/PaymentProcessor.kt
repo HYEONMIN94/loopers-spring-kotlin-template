@@ -5,6 +5,7 @@ import com.loopers.domain.order.OrderService
 import com.loopers.domain.order.entity.OrderItem
 import com.loopers.domain.order.event.OrderEvent
 import com.loopers.domain.payment.PaymentService
+import com.loopers.domain.payment.entity.Payment
 import com.loopers.domain.payment.event.PaymentEvent
 import com.loopers.domain.product.event.ProductStockEvent
 import com.loopers.infrastructure.event.DomainEventPublisher
@@ -30,10 +31,12 @@ class PaymentProcessor(
         val order = orderService.get(payment.orderId)
         try {
             val orderItems = orderItemService.findAll(order.id)
-            eventPublisher.publish(getDecreaseStocksEvents(orderItems))
+            eventPublisher.publish(decreaseStocksEvents(orderItems))
             eventPublisher.publish(PaymentEvent.PaymentRequestEvent(order.userId, payment.id))
-            eventPublisher.publish(PaymentEvent.PaymentSucceededEvent(payment.id))
-            eventPublisher.publish(OrderEvent.OrderSucceededEvent(order.id))
+            if (payment.paymentMethod == Payment.Method.POINT) {
+                eventPublisher.publish(PaymentEvent.PaymentSucceededEvent(payment.id))
+                eventPublisher.publish(OrderEvent.OrderSucceededEvent(order.id))
+            }
         } catch (e: Exception) {
             val reason = resolveFailureReason(e)
             eventPublisher.publish(PaymentEvent.PaymentFailedEvent(payment.id, reason))
@@ -42,7 +45,7 @@ class PaymentProcessor(
         }
     }
 
-    private fun getDecreaseStocksEvents(orderItems: List<OrderItem>): ProductStockEvent.DecreaseStocksEvent {
+    private fun decreaseStocksEvents(orderItems: List<OrderItem>): ProductStockEvent.DecreaseStocksEvent {
         return ProductStockEvent.DecreaseStocksEvent(
             orderItems.map {
                 ProductStockEvent.DecreaseStockEvent(it.productOptionId, it.quantity.value)

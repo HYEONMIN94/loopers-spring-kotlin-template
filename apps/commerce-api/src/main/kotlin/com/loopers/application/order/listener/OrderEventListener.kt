@@ -2,7 +2,6 @@ package com.loopers.application.order.listener
 
 import com.loopers.application.order.OrderStateService
 import com.loopers.domain.order.event.OrderEvent
-import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
 import org.springframework.transaction.event.TransactionPhase
 import org.springframework.transaction.event.TransactionalEventListener
@@ -11,7 +10,7 @@ import org.springframework.transaction.event.TransactionalEventListener
 class OrderEventListener(
     private val orderStateService: OrderStateService,
 ) {
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     fun handle(event: OrderEvent.OrderSucceededEvent) {
         orderStateService.orderSuccess(event.orderId)
     }
