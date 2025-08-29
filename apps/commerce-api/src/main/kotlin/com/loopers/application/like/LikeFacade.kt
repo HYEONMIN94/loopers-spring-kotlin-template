@@ -60,7 +60,8 @@ class LikeFacade(
     fun removeLike(command: RemoveLike) {
         productService.get(command.targetId)
 
-        val likeCount = likeCountService.getLikeCountWithLock(command.targetId, command.type)
-        likeCount.decrease()
+        likeService.remove(command)
+
+        eventPublisher.publish(LikeEvent.DecreaseEvent(command.targetId, command.type))
     }
 }

@@ -1,6 +1,7 @@
 package com.loopers.application.payment
 
 import com.loopers.domain.payment.PaymentService
+import com.loopers.domain.payment.entity.Payment
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
@@ -9,12 +10,6 @@ import org.springframework.transaction.annotation.Transactional
 class PaymentStateService(
     private val paymentService: PaymentService,
 ) {
-    @Transactional
-    fun paymentSuccess(paymentId: Long) {
-        val payment = paymentService.get(paymentId)
-        payment.success()
-    }
-
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     fun paymentProcessing(paymentId: Long) {
         val payment = paymentService.get(paymentId)
@@ -22,8 +17,16 @@ class PaymentStateService(
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    fun paymentFailure(paymentId: Long, reason: String) {
+    fun paymentSuccess(paymentId: Long): Payment {
+        val payment = paymentService.get(paymentId)
+        payment.success()
+        return payment
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    fun paymentFailure(paymentId: Long, reason: String): Payment {
         val payment = paymentService.get(paymentId)
         payment.failure(reason)
+        return payment
     }
 }

@@ -7,4 +7,9 @@ class LikeEvent {
         val targetId: Long,
         val type: Type,
     )
+
+    data class DecreaseEvent(
+        val targetId: Long,
+        val type: Type,
+    )
 }

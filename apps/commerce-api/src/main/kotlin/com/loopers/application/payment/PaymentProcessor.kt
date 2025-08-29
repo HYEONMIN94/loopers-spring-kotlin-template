@@ -31,8 +31,13 @@ class PaymentProcessor(
         val order = orderService.get(payment.orderId)
         try {
             val orderItems = orderItemService.findAll(order.id)
+
+            // 재고 차감
             eventPublisher.publish(decreaseStocksEvents(orderItems))
+
+            // 실 결제 진행
             eventPublisher.publish(PaymentEvent.PaymentRequestEvent(order.userId, payment.id))
+
             if (payment.paymentMethod == Payment.Method.POINT) {
                 eventPublisher.publish(PaymentEvent.PaymentSucceededEvent(payment.id))
                 eventPublisher.publish(OrderEvent.OrderSucceededEvent(order.id))

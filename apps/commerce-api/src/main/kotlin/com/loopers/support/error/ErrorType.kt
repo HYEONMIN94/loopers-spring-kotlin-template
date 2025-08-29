@@ -17,4 +17,5 @@ enum class ErrorType(val status: HttpStatus, val code: String, val message: Stri
 
     /** PG 결제 요청 */
     PAYMENT_REQUEST_FAILURE(HttpStatus.CONFLICT, HttpStatus.CONFLICT.reasonPhrase, "PG사 결제 요청에 실패하였습니다."),
+    PAYMENT_FAILURE(HttpStatus.CONFLICT, HttpStatus.CONFLICT.reasonPhrase, "PG사 결제에 실패하였습니다."),
 }
