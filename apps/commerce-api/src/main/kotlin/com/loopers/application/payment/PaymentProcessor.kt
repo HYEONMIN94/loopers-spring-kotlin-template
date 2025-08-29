@@ -1,16 +1,14 @@
 package com.loopers.application.payment
 
-import com.loopers.application.order.OrderStateService
 import com.loopers.domain.order.OrderItemService
 import com.loopers.domain.order.OrderService
-import com.loopers.domain.order.entity.Order
 import com.loopers.domain.order.entity.OrderItem
+import com.loopers.domain.order.event.OrderEvent
 import com.loopers.domain.payment.PaymentService
 import com.loopers.domain.payment.entity.Payment
-import com.loopers.domain.payment.strategy.PaymentStrategyRegistry
-import com.loopers.domain.product.ProductStockService
-import com.loopers.domain.product.dto.command.ProductStockCommand
-import com.loopers.domain.product.dto.result.ProductStockResult
+import com.loopers.domain.payment.event.PaymentEvent
+import com.loopers.domain.product.event.ProductStockEvent
+import com.loopers.infrastructure.event.DomainEventPublisher
 import com.loopers.support.error.CoreException
 import com.loopers.support.error.ErrorType
 import org.springframework.orm.ObjectOptimisticLockingFailureException
@@ -23,54 +21,51 @@ class PaymentProcessor(
     private val paymentService: PaymentService,
     private val orderService: OrderService,
     private val orderItemService: OrderItemService,
-    private val productStockService: ProductStockService,
-    private val paymentStateService: PaymentStateService,
-    private val orderStateService: OrderStateService,
-    private val paymentStrategyRegistry: PaymentStrategyRegistry,
+    private val eventPublisher: DomainEventPublisher,
 ) {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     fun process(id: Long) {
-        paymentStateService.paymentProcessing(id)
+        eventPublisher.publish(PaymentEvent.PaymentProcessedEvent(id))
 
         val payment = paymentService.get(id)
         val order = orderService.get(payment.orderId)
         try {
-            processPayment(order, payment)
+            val orderItems = orderItemService.findAll(order.id)
+
+            // 재고 차감
+            eventPublisher.publish(decreaseStocksEvents(orderItems))
+
+            // 실 결제 진행
+            eventPublisher.publish(PaymentEvent.PaymentRequestEvent(order.userId, payment.id))
+
+            if (payment.paymentMethod == Payment.Method.POINT) {
+                eventPublisher.publish(PaymentEvent.PaymentSucceededEvent(payment.id))
+                eventPublisher.publish(OrderEvent.OrderSucceededEvent(order.id))
+            }
         } catch (e: Exception) {
-            processFailure(order.id, payment.id, resolveFailureReason(e))
+            val reason = resolveFailureReason(e)
+            eventPublisher.publish(PaymentEvent.PaymentFailedEvent(payment.id, reason))
+            eventPublisher.publish(OrderEvent.OrderFailedEvent(order.id, reason))
             throw e
         }
     }
 
-    private fun processPayment(order: Order, payment: Payment) {
-        val orderItems = orderItemService.findAll(order.id)
-        val decreaseStocks = getDecreaseStocks(orderItems)
-        productStockService.decreaseStocks(decreaseStocks.toCommand())
-
-        val paymentStrategy = paymentStrategyRegistry.of(payment.paymentMethod)
-        paymentStrategy.process(order, payment)
-    }
-
-    private fun processFailure(orderId: Long, paymentId: Long, reason: String) {
-        paymentStateService.paymentFailure(paymentId, reason)
-        orderStateService.orderFailure(orderId, reason)
-    }
-
-    private fun getDecreaseStocks(orderItems: List<OrderItem>): ProductStockResult.DecreaseStocks {
-        val command = ProductStockCommand.GetDecreaseStock(
+    private fun decreaseStocksEvents(orderItems: List<OrderItem>): ProductStockEvent.DecreaseStocksEvent {
+        return ProductStockEvent.DecreaseStocksEvent(
             orderItems.map {
-                ProductStockCommand.GetDecreaseStock.DecreaseStock(it.productOptionId, it.quantity.value)
+                ProductStockEvent.DecreaseStockEvent(it.productOptionId, it.quantity.value)
             },
         )
-        return productStockService.getDecreaseStock(command)
     }
 
     private fun resolveFailureReason(e: Throwable): String {
+        // TODO: 개선 필요합니다... 과제에 집중하기 위해서 일단 이렇게 처리합니다ㅜㅜ
+
         return when (e) {
             is CoreException -> when (e.errorType) {
                 ErrorType.POINT_NOT_ENOUGH -> "포인트가 부족합니다."
                 ErrorType.PRODUCT_STOCK_NOT_ENOUGH -> "재고가 부족합니다."
-                else -> "알 수 없는 도메인 예외가 발생했습니다."
+                else -> e.message.toString()
             }
             is ObjectOptimisticLockingFailureException -> "동시 요청으로 인한 에러가 발생했습니다."
             else -> "알 수 없는 예외가 발생했습니다."

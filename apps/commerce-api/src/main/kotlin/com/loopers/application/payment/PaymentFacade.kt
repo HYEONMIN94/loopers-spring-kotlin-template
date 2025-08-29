@@ -3,13 +3,16 @@ package com.loopers.application.payment
 import com.loopers.domain.order.OrderItemService
 import com.loopers.domain.order.OrderService
 import com.loopers.domain.order.entity.OrderItem
+import com.loopers.domain.order.event.OrderEvent
 import com.loopers.domain.payment.PaymentService
 import com.loopers.domain.payment.dto.command.PaymentCommand
 import com.loopers.domain.payment.dto.result.PaymentResult
+import com.loopers.domain.payment.event.PaymentEvent
 import com.loopers.domain.payment.type.TransactionStatus
 import com.loopers.domain.product.ProductOptionService
 import com.loopers.domain.product.ProductService
 import com.loopers.domain.product.entity.ProductOption
+import com.loopers.infrastructure.event.DomainEventPublisher
 import com.loopers.support.error.CoreException
 import com.loopers.support.error.ErrorType
 import org.springframework.stereotype.Component
@@ -25,6 +28,7 @@ class PaymentFacade(
     private val orderItemService: OrderItemService,
     private val productOptionService: ProductOptionService,
     private val productService: ProductService,
+    private val eventPublisher: DomainEventPublisher,
 ) {
     @Transactional
     fun requestPayment(command: PaymentCommand.Request): PaymentResult.PaymentDetail {
@@ -48,11 +52,12 @@ class PaymentFacade(
         val payment = paymentService.get(command.transactionKey)
         val order = orderService.get(payment.orderId)
         if (command.status == TransactionStatus.SUCCESS) {
-            payment.success()
-            order.success()
+            eventPublisher.publish(PaymentEvent.PaymentSucceededEvent(payment.id))
+            eventPublisher.publish(OrderEvent.OrderSucceededEvent(order.id))
         } else if (command.status == TransactionStatus.FAILED) {
-            payment.failure(command.reason)
-            order.failure(command.reason)
+            eventPublisher.publish(PaymentEvent.PaymentFailedEvent(payment.id, command.reason!!))
+            eventPublisher.publish(OrderEvent.OrderFailedEvent(order.id, command.reason))
+            throw CoreException(ErrorType.PAYMENT_FAILURE, "결제에 실패하였습니다. 사유: ${command.reason}")
         }
     }
 

@@ -5,9 +5,11 @@ import com.loopers.domain.order.OrderService
 import com.loopers.domain.order.dto.command.OrderCommand
 import com.loopers.domain.order.dto.command.OrderItemCommand
 import com.loopers.domain.order.entity.Order
+import com.loopers.domain.order.event.OrderEvent
 import com.loopers.domain.payment.PaymentService
 import com.loopers.domain.payment.dto.command.PaymentCommand
 import com.loopers.domain.payment.entity.Payment
+import com.loopers.domain.payment.event.PaymentEvent
 import com.loopers.domain.point.Point
 import com.loopers.domain.product.entity.Product
 import com.loopers.domain.product.entity.ProductOption
@@ -22,6 +24,8 @@ import com.loopers.support.error.CoreException
 import com.loopers.support.error.ErrorType
 import com.loopers.utils.DatabaseCleanUp
 import org.assertj.core.api.Assertions
+import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
@@ -29,11 +33,14 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.test.context.event.ApplicationEvents
+import org.springframework.test.context.event.RecordApplicationEvents
 import java.math.BigDecimal
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 
 @SpringBootTest
+@RecordApplicationEvents
 class PaymentProcessorIntegrationTest @Autowired constructor(
     private val paymentProcessor: PaymentProcessor,
     private val paymentService: PaymentService,
@@ -507,5 +514,164 @@ class PaymentProcessorIntegrationTest @Autowired constructor(
             val successPaymentCount = paymentRepository.findAll().count { it.status == Payment.Status.SUCCESS }
             Assertions.assertThat(reloadedStock.quantity.value).isEqualTo(productStock - successPaymentCount)
         }
+    }
+
+    @DisplayName("결제 처리")
+    @Nested
+    inner class Event {
+        @Test
+        fun `포인트 결제는 성공 이벤트가 발행되고 상태·재고·포인트가 반영된다`(@Autowired events: ApplicationEvents) {
+            // given
+            val userId = 1L
+
+            val product = productRepository.save(
+                Product.create(1L, "상품", "설명", BigDecimal(1000)),
+            )
+            val option = productOptionRepository.save(
+                ProductOption.create(product.id, 1L, "화이트", "M", "노출", BigDecimal(500)),
+            )
+            val stock = productStockRepository.save(
+                ProductStock.create(option.id, 10),
+            )
+            val point = pointRepository.save(
+                Point.create(userId, BigDecimal.valueOf(10000L)),
+            )
+
+            val orderCommand = OrderCommand.RequestOrder(
+                userId = userId,
+                originalPrice = BigDecimal(1500),
+                finalPrice = BigDecimal(1500),
+                status = Order.Status.PAYMENT_REQUEST,
+                items = listOf(OrderItemCommand.Register.Item(option.id, 1)),
+            )
+            val order = orderService.request(orderCommand)
+            orderItemService.register(orderCommand.toItemCommand(order.id))
+
+            val payment = paymentService.request(
+                PaymentCommand.Request(order.id, Payment.Method.POINT, "", "").toEntity(BigDecimal(1500)),
+            )
+
+            // when
+            paymentProcessor.process(payment.id)
+
+            // then - 이벤트 발행 화긴
+            assertThat(events.stream(PaymentEvent.PaymentProcessedEvent::class.java).count())
+                .isEqualTo(1)
+            assertThat(events.stream(PaymentEvent.PaymentRequestEvent::class.java).count())
+                .isEqualTo(1)
+            assertThat(events.stream(PaymentEvent.PaymentSucceededEvent::class.java).count())
+                .isEqualTo(1)
+            assertThat(events.stream(OrderEvent.OrderSucceededEvent::class.java).count())
+                .isEqualTo(1)
+
+            // then - 상태 전이
+            val reloadedPayment = paymentRepository.findById(payment.id).get()
+            val reloadedOrder = orderRepository.findById(order.id).get()
+            assertThat(reloadedPayment.status).isEqualTo(Payment.Status.SUCCESS)
+            assertThat(reloadedOrder.status).isEqualTo(Order.Status.ORDER_SUCCESS)
+
+            // then - 재고, 포인트
+            val stockResult = productStockRepository.findById(stock.id).get()
+            assertThat(stockResult.quantity.value).isEqualTo(9)
+
+            val pointResult = pointRepository.findById(point.id).get()
+            assertThat(pointResult.amount.value.intValueExact()).isEqualTo(8500)
+        }
+
+        @Test
+        fun `재고가 부족하면 롤백되고 실패 이벤트 처리로 상태가 실패로 전이된다`(@Autowired events: ApplicationEvents) {
+            // given
+            val userId = 2L
+
+            val product = productRepository.save(
+                Product.create(2L, "상품2", "설명", BigDecimal(1000)),
+            )
+            val option = productOptionRepository.save(
+                ProductOption.create(product.id, 2L, "블랙", "L", "노출", BigDecimal.ZERO),
+            )
+
+            val stock = productStockRepository.save(ProductStock.create(option.id, 0))
+            pointRepository.save(Point.create(userId, BigDecimal.valueOf(10_000L)))
+
+            val orderCommand = OrderCommand.RequestOrder(
+                userId = userId,
+                originalPrice = BigDecimal(1000),
+                finalPrice = BigDecimal(1000),
+                status = Order.Status.PAYMENT_REQUEST,
+                items = listOf(OrderItemCommand.Register.Item(option.id, 1)),
+            )
+            val order = orderService.request(orderCommand)
+            orderItemService.register(orderCommand.toItemCommand(order.id))
+
+            val payment = paymentService.request(
+                PaymentCommand.Request(order.id, Payment.Method.POINT, "", "").toEntity(BigDecimal(1500)),
+            )
+
+            // when
+            assertThatThrownBy { paymentProcessor.process(payment.id) }
+                .isInstanceOf(Exception::class.java)
+
+            // then
+            assertThat(events.stream(PaymentEvent.PaymentFailedEvent::class.java).count())
+                .isEqualTo(1)
+            assertThat(events.stream(OrderEvent.OrderFailedEvent::class.java).count())
+                .isEqualTo(1)
+
+            val failedPayment = paymentService.get(payment.id)
+            val failedOrder = orderService.get(order.id)
+            assertThat(failedPayment.status).isEqualTo(Payment.Status.FAILED)
+            assertThat(failedOrder.status).isEqualTo(Order.Status.ORDER_FAIL)
+
+            val stockResult = productStockRepository.findById(stock.id).get()
+            assertThat(stockResult.quantity.value).isEqualTo(0)
+        }
+    }
+
+    @Test
+    fun `포인트가 부족하면 롤백되고 실패 이벤트 처리로 상태가 실패로 전이된다`(@Autowired events: ApplicationEvents) {
+        // given
+        val userId = 2L
+
+        val product = productRepository.save(
+            Product.create(2L, "상품2", "설명", BigDecimal(1000)),
+        )
+        val option = productOptionRepository.save(
+            ProductOption.create(product.id, 2L, "블랙", "L", "노출", BigDecimal.ZERO),
+        )
+
+        productStockRepository.save(ProductStock.create(option.id, 10))
+        val point = pointRepository.save(Point.create(userId, BigDecimal.valueOf(10)))
+
+        val orderCommand = OrderCommand.RequestOrder(
+            userId = userId,
+            originalPrice = BigDecimal(1000),
+            finalPrice = BigDecimal(1000),
+            status = Order.Status.PAYMENT_REQUEST,
+            items = listOf(OrderItemCommand.Register.Item(option.id, 1)),
+        )
+        val order = orderService.request(orderCommand)
+        orderItemService.register(orderCommand.toItemCommand(order.id))
+
+        val payment = paymentService.request(
+            PaymentCommand.Request(order.id, Payment.Method.POINT, "KB", "1111-2222-3333-4444").toEntity(BigDecimal(1500)),
+        )
+
+        // when
+        assertThatThrownBy { paymentProcessor.process(payment.id) }
+            .isInstanceOf(Exception::class.java)
+
+        // then
+        assertThat(events.stream(PaymentEvent.PaymentFailedEvent::class.java).count())
+            .isEqualTo(1)
+        assertThat(events.stream(OrderEvent.OrderFailedEvent::class.java).count())
+            .isEqualTo(1)
+
+        val failedPayment = paymentService.get(payment.id)
+        val failedOrder = orderService.get(order.id)
+        assertThat(failedPayment.status).isEqualTo(Payment.Status.FAILED)
+        assertThat(failedOrder.status).isEqualTo(Order.Status.ORDER_FAIL)
+
+        val pointResult = pointRepository.findById(point.id).get()
+        assertThat(pointResult.amount.value.intValueExact()).isEqualTo(10)
     }
 }

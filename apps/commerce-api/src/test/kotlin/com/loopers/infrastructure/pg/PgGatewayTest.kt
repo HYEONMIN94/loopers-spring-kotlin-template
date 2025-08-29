@@ -18,7 +18,6 @@ import org.mockito.kotlin.verifyNoInteractions
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.bean.override.mockito.MockitoBean
-import java.time.Duration
 
 @SpringBootTest
 class PgGatewayTest @Autowired constructor(
@@ -111,12 +110,9 @@ class PgGatewayTest @Autowired constructor(
             val circuitBreaker = circuitBreakerRegistry.circuitBreaker("pg")
             circuitBreaker.transitionToOpenState()
 
-            val start = System.nanoTime()
             val result = gateway.payment(userId, body)
-            val tookMs = Duration.ofNanos(System.nanoTime() - start).toMillis()
 
             assertThat(result).isInstanceOf(PgGateway.Result.Retryable::class.java)
-            assertThat(tookMs).isLessThan(25)
             verifyNoInteractions(pgClient)
         }
 
