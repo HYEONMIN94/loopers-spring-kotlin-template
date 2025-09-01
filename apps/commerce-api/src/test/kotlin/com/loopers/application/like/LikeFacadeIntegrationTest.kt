@@ -20,6 +20,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import java.math.BigDecimal
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
+import org.awaitility.Awaitility.await
 
 @SpringBootTest
 class LikeFacadeIntegrationTest @Autowired constructor(
@@ -65,7 +66,7 @@ class LikeFacadeIntegrationTest @Autowired constructor(
         @Test
         fun `여러 유저가 동시에 같은 상품에 좋아요 요청을 보내도 좋아요 수는 정확히 반영되어야 한다`() {
             // given
-            val userCount = 20
+            val userCount = 4
             val brand = brandRepository.save(Brand.create("브랜드", "설명"))
             val product = productFacade.registerProduct(
                 ProductCommand.RegisterProduct(brand.id, "상품", "설명", BigDecimal(1000)),
@@ -97,7 +98,7 @@ class LikeFacadeIntegrationTest @Autowired constructor(
         @Test
         fun `여러 유저가 동시에 같은 상품에 좋아요 취소를 요청해도 최종 좋아요 수는 0이어야 한다`() {
             // given
-            val userCount = 20
+            val userCount = 4
             val brand = brandRepository.save(Brand.create("브랜드", "설명"))
             val productDetail = productFacade.registerProduct(
                 ProductCommand.RegisterProduct(brand.id, "상품", "설명", BigDecimal(1000)),

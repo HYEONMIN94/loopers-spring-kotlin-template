@@ -11,9 +11,10 @@ import com.loopers.domain.like.dto.result.LikeCountResult
 import com.loopers.domain.like.dto.result.LikeResult
 import com.loopers.domain.like.dto.result.LikeResult.LikeDetail
 import com.loopers.domain.like.dto.result.LikeWithResult.PageWithProductDetails
+import com.loopers.domain.like.event.LikeEvent
 import com.loopers.domain.product.ProductService
 import com.loopers.domain.product.dto.result.ProductResult
-import com.loopers.domain.user.UserService
+import com.loopers.infrastructure.event.DomainEventPublisher
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 
@@ -22,9 +23,9 @@ import org.springframework.transaction.annotation.Transactional
 class LikeFacade(
     private val likeService: LikeService,
     private val likeCountService: LikeCountService,
-    private val userService: UserService,
     private val productService: ProductService,
     private val brandService: BrandService,
+    private val eventPublisher: DomainEventPublisher,
 ) {
     fun getLikesForProduct(criteria: LikeCriteria.FindAll): PageWithProductDetails {
         val likePage = likeService.findAll(criteria)
@@ -48,20 +49,19 @@ class LikeFacade(
     fun addLike(command: AddLike): LikeDetail {
         productService.get(command.targetId)
 
-        return likeService.add(command).let {
-            if (it.isNew) {
-                val likeCount = likeCountService.getLikeCountWithLock(command.targetId, command.type)
-                likeCount.increase()
-            }
-            LikeDetail.from(it.like)
+        val addLike = likeService.add(command)
+        if (addLike.isNew) {
+            eventPublisher.publish(LikeEvent.IncreaseEvent(command.targetId, command.type))
         }
+        return LikeDetail.from(addLike.like)
     }
 
     @Transactional
     fun removeLike(command: RemoveLike) {
         productService.get(command.targetId)
 
-        val likeCount = likeCountService.getLikeCountWithLock(command.targetId, command.type)
-        likeCount.decrease()
+        likeService.remove(command)
+
+        eventPublisher.publish(LikeEvent.DecreaseEvent(command.targetId, command.type))
     }
 }
