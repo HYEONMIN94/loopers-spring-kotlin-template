@@ -1,5 +1,6 @@
 package com.loopers.application.like
 
+import com.loopers.application.like.publisher.LikeEventPublisher
 import com.loopers.domain.brand.BrandService
 import com.loopers.domain.brand.dto.result.BrandResult
 import com.loopers.domain.like.LikeCountService
@@ -26,6 +27,7 @@ class LikeFacade(
     private val productService: ProductService,
     private val brandService: BrandService,
     private val eventPublisher: DomainEventPublisher,
+    private val likeEventPublisher: LikeEventPublisher,
 ) {
     fun getLikesForProduct(criteria: LikeCriteria.FindAll): PageWithProductDetails {
         val likePage = likeService.findAll(criteria)
@@ -52,6 +54,8 @@ class LikeFacade(
         val addLike = likeService.add(command)
         if (addLike.isNew) {
             eventPublisher.publish(LikeEvent.IncreaseEvent(command.targetId, command.type))
+
+            likeEventPublisher.publishLike(command.targetId, 1)
         }
         return LikeDetail.from(addLike.like)
     }
@@ -63,5 +67,7 @@ class LikeFacade(
         likeService.remove(command)
 
         eventPublisher.publish(LikeEvent.DecreaseEvent(command.targetId, command.type))
+
+        likeEventPublisher.publishUnLike(command.targetId, -1)
     }
 }

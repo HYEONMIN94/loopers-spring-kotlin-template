@@ -1,5 +1,6 @@
 package com.loopers.application.payment
 
+import com.loopers.application.order.publisher.OrderEventPublisher
 import com.loopers.domain.order.OrderItemService
 import com.loopers.domain.order.OrderService
 import com.loopers.domain.order.entity.OrderItem
@@ -7,6 +8,7 @@ import com.loopers.domain.order.event.OrderEvent
 import com.loopers.domain.payment.PaymentService
 import com.loopers.domain.payment.entity.Payment
 import com.loopers.domain.payment.event.PaymentEvent
+import com.loopers.domain.product.ProductOptionService
 import com.loopers.domain.product.event.ProductStockEvent
 import com.loopers.infrastructure.event.DomainEventPublisher
 import com.loopers.support.error.CoreException
@@ -21,7 +23,9 @@ class PaymentProcessor(
     private val paymentService: PaymentService,
     private val orderService: OrderService,
     private val orderItemService: OrderItemService,
+    private val productOptionService: ProductOptionService,
     private val eventPublisher: DomainEventPublisher,
+    private val orderEventPublisher: OrderEventPublisher,
 ) {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     fun process(id: Long) {
@@ -42,11 +46,29 @@ class PaymentProcessor(
                 eventPublisher.publish(PaymentEvent.PaymentSucceededEvent(payment.id))
                 eventPublisher.publish(OrderEvent.OrderSucceededEvent(order.id))
             }
+
+            publishProductSalse(order.id)
         } catch (e: Exception) {
             val reason = resolveFailureReason(e)
             eventPublisher.publish(PaymentEvent.PaymentFailedEvent(payment.id, reason))
             eventPublisher.publish(OrderEvent.OrderFailedEvent(order.id, reason))
             throw e
+        }
+    }
+
+    private fun publishProductSalse(orderId: Long) {
+        val items = orderItemService.findAll(orderId)
+
+        val optionIds = items.map { it.productOptionId }.distinct()
+        val options = productOptionService.findAll(optionIds)
+        val optionToProductId = options.associate { it.id to it.productId }
+
+        val perProductQty: Map<Long, Long> = items
+            .groupBy { optionToProductId[it.productOptionId] ?: error("상품 옵션이 매칭되지 않습니다 =${it.productOptionId}") }
+            .mapValues { (_, lines) -> lines.sumOf { it.quantity.value.toLong() } }
+
+        perProductQty.forEach { (productId, qty) ->
+            orderEventPublisher.publishProductSalse(productId, qty)
         }
     }
 

@@ -1,5 +1,6 @@
 package com.loopers.application.product
 
+import com.loopers.application.product.publisher.ProductEventPublisher
 import com.loopers.domain.brand.BrandService
 import com.loopers.domain.brand.dto.result.BrandResult
 import com.loopers.domain.like.LikeCountService
@@ -22,6 +23,7 @@ class ProductFacade(
     private val productService: ProductService,
     private val brandService: BrandService,
     private val likeCountService: LikeCountService,
+    private val productEventPublisher: ProductEventPublisher,
 ) {
     fun getProduct(productId: Long): WithBrandDetail {
         val productDetail = ProductDetail.from(productService.get(productId))
@@ -29,6 +31,7 @@ class ProductFacade(
         val likeCountDetail = likeCountService.getLikeCount(productId, PRODUCT)
             .let { LikeCountResult.LikeCountDetail.from(it) }
 
+        productEventPublisher.publishProductViewed(productDetail.id, 1)
         return WithBrandDetail.from(productDetail, brandDetail, likeCountDetail)
     }
 
