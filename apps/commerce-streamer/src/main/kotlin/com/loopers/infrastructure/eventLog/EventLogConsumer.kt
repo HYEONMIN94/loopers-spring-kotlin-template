@@ -14,7 +14,7 @@ class EventLogConsumer(
 ) {
     // TODO: 토픽을 일일히 지정할 수 없으니 AOP를 활용한 공통 로직 변경 필요
     @KafkaListener(
-        topics = ["like-events", "product-salse-events", "product-view-events"],
+        topicPattern = ".*-events",
         groupId = "audit-log-consumer",
     )
     fun onMessage(record: ConsumerRecord<String, ByteArray>) {
