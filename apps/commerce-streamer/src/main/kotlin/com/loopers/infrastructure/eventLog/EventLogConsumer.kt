@@ -1,6 +1,5 @@
 package com.loopers.infrastructure.eventLog
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.loopers.domain.eventLog.EventLogService
 import com.loopers.domain.eventLog.entity.EventLog
@@ -12,10 +11,10 @@ import java.time.Instant
 @Component
 class EventLogConsumer(
     private val eventLogService: EventLogService,
-    private val objectMapper: ObjectMapper,
 ) {
+    // TODO: 토픽을 일일히 지정할 수 없으니 AOP를 활용한 공통 로직 변경 필요
     @KafkaListener(
-        topics = ["like-events", "order-events", "catalog-events"],
+        topics = ["like-events", "product-salse-events", "product-view-events"],
         groupId = "audit-log-consumer",
     )
     fun onMessage(record: ConsumerRecord<String, ByteArray>) {
