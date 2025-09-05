@@ -34,9 +34,9 @@ class ProductMetricsConsumer(
         ack.acknowledge()
     }
 
-    @KafkaListener(topics = ["product-salse-events"], groupId = "product-metrics")
+    @KafkaListener(topics = ["product-sales-events"], groupId = "product-metrics")
     fun onSalesChanged(env: EventEnvelope<ProductSalesChanged>, ack: Acknowledgment) {
-        if (!eventHandledService.tryHandle(env.eventId, "metrics-product-salse")) {
+        if (!eventHandledService.tryHandle(env.eventId, "metrics-product-sales")) {
             ack.acknowledge()
             return
         }

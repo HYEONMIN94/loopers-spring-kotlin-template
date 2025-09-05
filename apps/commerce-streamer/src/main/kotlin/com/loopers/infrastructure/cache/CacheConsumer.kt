@@ -26,9 +26,9 @@ class CacheConsumer(
         ack.acknowledge()
     }
 
-    @KafkaListener(topics = ["product-salse-events"], groupId = "cache-evict")
+    @KafkaListener(topics = ["product-sales-events"], groupId = "cache-evict")
     fun onStockAdjusted(env: EventEnvelope<ProductSalesChanged>, ack: Acknowledgment) {
-        if (!eventHandledService.tryHandle(env.eventId, "cache-product-salse")) {
+        if (!eventHandledService.tryHandle(env.eventId, "cache-product-sales")) {
             ack.acknowledge()
             return
         }
