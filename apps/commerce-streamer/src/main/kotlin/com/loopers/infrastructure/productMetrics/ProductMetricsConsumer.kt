@@ -7,6 +7,7 @@ import com.loopers.infrastructure.event.dto.ProductLikeChanged
 import com.loopers.infrastructure.event.dto.ProductSalesChanged
 import com.loopers.infrastructure.event.dto.ProductViewed
 import org.springframework.kafka.annotation.KafkaListener
+import org.springframework.kafka.support.Acknowledgment
 import org.springframework.stereotype.Component
 import java.time.LocalDate
 
@@ -16,8 +17,11 @@ class ProductMetricsConsumer(
     private val productMetricsService: ProductMetricsService,
 ) {
     @KafkaListener(topics = ["like-events"], groupId = "product-metrics")
-    fun onLikeChanged(env: EventEnvelope<ProductLikeChanged>) {
-        if (!eventHandledService.tryHandle(env.eventId, "metrics-like")) return
+    fun onLikeChanged(env: EventEnvelope<ProductLikeChanged>, ack: Acknowledgment) {
+        if (!eventHandledService.tryHandle(env.eventId, "metrics-like")) {
+            ack.acknowledge()
+            return
+        }
 
         val payload = env.payload
         productMetricsService.addMetrics(
@@ -27,11 +31,15 @@ class ProductMetricsConsumer(
             salesDelta = 0,
             viewsDelta = 0,
         )
+        ack.acknowledge()
     }
 
     @KafkaListener(topics = ["product-salse-events"], groupId = "product-metrics")
-    fun onSalesChanged(env: EventEnvelope<ProductSalesChanged>) {
-        if (!eventHandledService.tryHandle(env.eventId, "metrics-product-salse")) return
+    fun onSalesChanged(env: EventEnvelope<ProductSalesChanged>, ack: Acknowledgment) {
+        if (!eventHandledService.tryHandle(env.eventId, "metrics-product-salse")) {
+            ack.acknowledge()
+            return
+        }
 
         val payload = env.payload
         productMetricsService.addMetrics(
@@ -41,11 +49,15 @@ class ProductMetricsConsumer(
             salesDelta = payload.quantity,
             viewsDelta = 0,
         )
+        ack.acknowledge()
     }
 
     @KafkaListener(topics = ["product-view-events"], groupId = "product-metrics")
-    fun onViewed(env: EventEnvelope<ProductViewed>) {
-        if (!eventHandledService.tryHandle(env.eventId, "metrics-product-view")) return
+    fun onViewed(env: EventEnvelope<ProductViewed>, ack: Acknowledgment) {
+        if (!eventHandledService.tryHandle(env.eventId, "metrics-product-view")) {
+            ack.acknowledge()
+            return
+        }
 
         val payload = env.payload
         productMetricsService.addMetrics(
@@ -55,5 +67,6 @@ class ProductMetricsConsumer(
             salesDelta = 0,
             viewsDelta = payload.delta,
         )
+        ack.acknowledge()
     }
 }

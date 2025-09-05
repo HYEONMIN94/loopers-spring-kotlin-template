@@ -5,6 +5,7 @@ import com.loopers.domain.eventLog.EventLogService
 import com.loopers.domain.eventLog.entity.EventLog
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.springframework.kafka.annotation.KafkaListener
+import org.springframework.kafka.support.Acknowledgment
 import org.springframework.stereotype.Component
 import java.time.Instant
 
@@ -17,7 +18,7 @@ class EventLogConsumer(
         topicPattern = ".*-events",
         groupId = "audit-log-consumer",
     )
-    fun onMessage(record: ConsumerRecord<String, ByteArray>) {
+    fun onMessage(record: ConsumerRecord<String, ByteArray>, ack: Acknowledgment) {
         val root = jacksonObjectMapper().readTree(record.value())
 
         val eventId = root.get("eventId")?.asText() ?: "unknown"
@@ -64,5 +65,6 @@ class EventLogConsumer(
                 payload = payload,
             ),
         )
+        ack.acknowledge()
     }
 }
