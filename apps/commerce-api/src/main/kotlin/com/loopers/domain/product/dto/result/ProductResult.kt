@@ -17,9 +17,10 @@ class ProductResult {
         val price: BigDecimal,
         val createAt: ZonedDateTime,
         val updateAt: ZonedDateTime,
+        val rank: Int? = null,
     ) {
         companion object {
-            fun from(product: Product): ProductDetail {
+            fun from(product: Product, rank: Int? = null): ProductDetail {
                 return ProductDetail(
                     product.id,
                     product.brandId,
@@ -28,6 +29,7 @@ class ProductResult {
                     product.price.value,
                     product.createdAt,
                     product.updatedAt,
+                    rank,
                 )
             }
         }

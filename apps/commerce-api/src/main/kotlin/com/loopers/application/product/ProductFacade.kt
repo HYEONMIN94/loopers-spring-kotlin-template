@@ -1,6 +1,8 @@
 package com.loopers.application.product
 
 import com.loopers.application.product.publisher.ProductEventPublisher
+import com.loopers.application.ranking.RankingReader
+import com.loopers.application.ranking.publisher.RankingEventPublisher
 import com.loopers.domain.brand.BrandService
 import com.loopers.domain.brand.dto.result.BrandResult
 import com.loopers.domain.like.LikeCountService
@@ -16,6 +18,8 @@ import com.loopers.domain.product.dto.result.ProductWithResult.PageWithBrandDeta
 import com.loopers.domain.product.dto.result.ProductWithResult.WithBrandDetail
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 @Transactional(readOnly = true)
 @Component
@@ -24,14 +28,23 @@ class ProductFacade(
     private val brandService: BrandService,
     private val likeCountService: LikeCountService,
     private val productEventPublisher: ProductEventPublisher,
+    private val rankingEventPublisher: RankingEventPublisher,
+    private val rankingReader: RankingReader,
 ) {
     fun getProduct(productId: Long): WithBrandDetail {
-        val productDetail = ProductDetail.from(productService.get(productId))
+        val date = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
+        val rankKey = "ranking:all:$date"
+
+        val productDetail = ProductDetail.from(
+            productService.get(productId),
+            rankingReader.readRank(rankKey, productId.toString()),
+        )
         val brandDetail = BrandResult.BrandDetail.from(brandService.get(productDetail.brandId))
         val likeCountDetail = likeCountService.getLikeCount(productId, PRODUCT)
             .let { LikeCountResult.LikeCountDetail.from(it) }
 
         productEventPublisher.publishProductViewed(productDetail.id, 1)
+        rankingEventPublisher.publishViewEvent(productId)
         return WithBrandDetail.from(productDetail, brandDetail, likeCountDetail)
     }
 

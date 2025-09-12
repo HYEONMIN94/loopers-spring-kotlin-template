@@ -1,6 +1,7 @@
 package com.loopers.application.payment
 
 import com.loopers.application.order.publisher.OrderEventPublisher
+import com.loopers.application.ranking.publisher.RankingEventPublisher
 import com.loopers.domain.order.OrderItemService
 import com.loopers.domain.order.OrderService
 import com.loopers.domain.order.entity.OrderItem
@@ -9,6 +10,7 @@ import com.loopers.domain.payment.PaymentService
 import com.loopers.domain.payment.entity.Payment
 import com.loopers.domain.payment.event.PaymentEvent
 import com.loopers.domain.product.ProductOptionService
+import com.loopers.domain.product.ProductService
 import com.loopers.domain.product.event.ProductStockEvent
 import com.loopers.infrastructure.event.DomainEventPublisher
 import com.loopers.support.error.CoreException
@@ -23,9 +25,11 @@ class PaymentProcessor(
     private val paymentService: PaymentService,
     private val orderService: OrderService,
     private val orderItemService: OrderItemService,
+    private val productService: ProductService,
     private val productOptionService: ProductOptionService,
     private val eventPublisher: DomainEventPublisher,
     private val orderEventPublisher: OrderEventPublisher,
+    private val rankingEventPublisher: RankingEventPublisher,
 ) {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     fun process(id: Long) {
@@ -69,6 +73,11 @@ class PaymentProcessor(
 
         perProductQty.forEach { (productId, qty) ->
             orderEventPublisher.publishProductSalse(productId, qty)
+        }
+
+        perProductQty.forEach { (productId, qty) ->
+            val product = productService.get(productId)
+            rankingEventPublisher.publishSalesEvent(productId, product.price.value.toLong(), qty.toInt())
         }
     }
 
