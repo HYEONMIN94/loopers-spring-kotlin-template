@@ -14,6 +14,6 @@ class OrderEventPublisher(
     fun publishProductSalse(productId: Long, quantity: Long) {
         val payload = ProductSalesChanged(productId, quantity)
         val envelope = EventEnvelope.of(partitionKey = productId.toString(), payload = payload)
-        publisher.publish(Topics.PRODUCT_SALSE_EVENTS, envelope)
+        publisher.publish(Topics.PRODUCT_SALES_EVENTS, envelope)
     }
 }

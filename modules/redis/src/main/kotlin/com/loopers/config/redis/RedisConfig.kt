@@ -20,6 +20,7 @@ class RedisConfig(
     companion object {
         private const val CONNECTION_MASTER = "redisConnectionMaster"
         const val REDIS_TEMPLATE_MASTER = "redisTemplateMaster"
+        const val REDIS_TEMPLATE_READ = "redisTemplate"
     }
 
     @Primary
@@ -45,6 +46,16 @@ class RedisConfig(
     fun defaultRedisTemplate(
         lettuceConnectionFactory: LettuceConnectionFactory,
     ): RedisTemplate<*, *> {
+        return RedisTemplate<String, String>()
+            .defaultRedisTemplate(lettuceConnectionFactory)
+    }
+
+    @Primary
+    @Qualifier(REDIS_TEMPLATE_READ)
+    @Bean
+    fun readRedisTemplate(
+        lettuceConnectionFactory: LettuceConnectionFactory,
+    ): RedisTemplate<String, String> {
         return RedisTemplate<String, String>()
             .defaultRedisTemplate(lettuceConnectionFactory)
     }
